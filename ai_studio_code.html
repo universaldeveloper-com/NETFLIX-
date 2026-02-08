@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sehj's Netflix</title>
+    <style>
+        /* --- NETFLIX iOS THEME CSS --- */
+        :root {
+            --netflix-red: #E50914;
+            --bg-black: #000000;
+            --bg-dark-gray: #1C1C1E;
+            --text-white: #FFFFFF;
+            --text-gray: #8E8E93;
+            --glass: rgba(30, 30, 30, 0.95);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-black);
+            color: var(--text-white);
+            overflow: hidden; 
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* --- SCREEN MANAGEMENT --- */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            background: var(--bg-black);
+            display: none;
+            z-index: 10;
+            padding-bottom: 80px;
+        }
+
+        .screen.active {
+            display: block;
+            animation: fadeIn 0.6s ease;
+        }
+
+        .screen.slide-in {
+            display: block;
+            z-index: 20;
+            animation: slideUpiOS 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        /* --- 1. INTRO LAYER (App Start) --- */
+        #intro-layer {
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: black;
+            height: 100vh;
+            overflow: hidden;
+            flex-direction: column;
+        }
+        
+        #intro-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        #tap-to-start {
+            text-align: center;
+            animation: pulse 2s infinite;
+            cursor: pointer;
+            padding: 20px;
+        }
+
+        #loading-msg {
+            display: none;
+            color: #E50914;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        /* --- 2. HOME SCREEN --- */
+        .app-header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 15px 20px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, transparent 100%);
+            z-index: 50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .n-logo {
+            color: var(--netflix-red);
+            font-weight: 900;
+            font-size: 28px;
+            letter-spacing: 1px;
+        }
+
+        .profile-icon {
+            width: 35px;
+            height: 35px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border 0.3s;
+        }
+
+        .hero-container {
+            position: relative;
+            height: 60vh;
+            width: 100%;
+        }
+
+        .hero-slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            transition: opacity 1.5s ease;
+        }
+        .hero-slide.active { opacity: 1; }
+
+        .hero-gradient {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(to top, var(--bg-black), transparent);
+        }
+
+        .list-title {
+            padding: 20px 20px 10px 20px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .movie-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 0 15px 40px 15px;
+        }
+
+        .poster-card {
+            aspect-ratio: 2/3;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            background: #222;
+        }
+        .poster-card img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* --- 3. PROFILE SCREEN --- */
+        #profile-screen { background: #000; padding-top: 60px; }
+        .profile-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .avatar-large {
+            width: 100px;
+            height: 100px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border: 2px solid var(--netflix-red);
+        }
+        .profile-name { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+        .profile-meta { color: #888; font-size: 14px; margin-bottom: 2px; }
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            padding: 20px 0;
+            border-top: 1px solid #222;
+            border-bottom: 1px solid #222;
+            margin-bottom: 20px;
+        }
+        .stat-box { text-align: center; }
+        .stat-num { font-size: 18px; font-weight: bold; color: var(--netflix-red); }
+        .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
+        .info-row {
+            padding: 15px 20px;
+            border-bottom: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+        }
+        .info-label { color: #888; }
+        .info-val { font-weight: 600; }
+        .special-note {
+            margin: 30px 20px;
+            background: #1c1c1e;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #ccc;
+            text-align: center;
+            border: 1px solid #333;
+        }
+
+        /* --- 4. SERIES DETAILS --- */
+        .modal-header {
+            position: sticky;
+            top: 0;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .back-btn { font-size: 24px; color: white; margin-right: 15px; cursor: pointer; }
+        .series-hero { padding: 20px; }
+        .play-btn-large {
+            background: white;
+            color: black;
+            border-radius: 4px;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+        .episode-row {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #222;
+            cursor: pointer;
+        }
+        .ep-thumb {
+            width: 110px;
+            height: 65px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .ep-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* --- 5. PLAYER & INTRO --- */
+        #episode-content-area { padding: 20px; padding-top: 20px; display: none; }
+        
+        #episode-intro-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        #episode-intro-vid { width: 100%; height: 100%; object-fit: contain; }
+        
+        .skip-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 20px;
+            background: white;
+            color: black;
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 201;
+            cursor: pointer;
+        }
+
+        .ep-media-placeholder {
+            width: 100%;
+            background: #111;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .ep-media-placeholder video { width: 100%; display: block; }
+        .love-letter {
+            font-size: 17px;
+            line-height: 1.6;
+            color: #ddd;
+            font-family: 'Georgia', serif;
+            white-space: pre-wrap;
+            margin-bottom: 30px;
+        }
+        .rating-section {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 40px;
+            border: 1px solid #333;
+        }
+        .rating-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 8px; }
+        .rate-btn { background: #333; color: white; border: none; padding: 10px 0; border-radius: 5px; font-weight: bold; }
+
+        /* TOAST */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 16px;
+            position: fixed;
+            z-index: 9999;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 14px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            border-left: 4px solid var(--netflix-red);
+        }
+        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUpiOS { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+    </style>
+</head>
+<body>
+
+    <div id="toast">Available, but this is not the main one! Look for 'My Dearest One'</div>
+
+    <!-- SCREEN 1: APP LAUNCH INTRO -->
+    <div id="intro-layer" class="screen active" onclick="startExperience()">
+        <div id="tap-to-start">
+            <h2 style="letter-spacing: 2px; margin-bottom: 10px;">FOR SEHJ</h2>
+            <div style="color: #666; font-size: 12px;">(Tap Screen to Start)</div>
+            <div id="loading-msg">Loading Video...</div>
+        </div>
+        
+        <!-- Video that auto-plays on click -->
+        <video id="intro-video" playsinline>
+            <source src="intro.mp4" type="video/mp4">
+        </video>
+    </div>
+
+    <!-- SCREEN 2: HOME -->
+    <div id="home-screen" class="screen">
+        <div class="app-header">
+            <div class="n-logo">SEHJ</div>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" 
+                 class="profile-icon" onclick="openProfile()">
+        </div>
+
+        <div class="hero-container">
+            <div class="hero-slide active" style="background-image: url('hero1.jpg');"></div>
+            <div class="hero-slide" style="background-image: url('hero2.jpg');"></div>
+            <div class="hero-slide" style="background-image: url('hero3.jpg');"></div>
+            <div class="hero-slide" style="background-image: url('hero4.jpg');"></div>
+            <div class="hero-slide" style="background-image: url('hero5.jpg');"></div>
+            <div class="hero-gradient"></div>
+        </div>
+
+        <div class="list-title">My List</div>
+        
+        <div class="movie-grid">
+            <!-- MAIN MOVIE -->
+            <div class="poster-card" onclick="openSeriesDetails()">
+                <img src="poster1.jpg">
+            </div>
+            
+            <!-- FILLERS -->
+            <div class="poster-card" onclick="showFillerMsg()"><img src="poster2.jpg" onerror="this.src='https://via.placeholder.com/200x300/222/555?text=Love'"></div>
+            <div class="poster-card" onclick="showFillerMsg()"><img src="poster3.jpg" onerror="this.src='https://via.placeholder.com/200x300/222/555?text=Us'"></div>
+            <div class="poster-card" onclick="showFillerMsg()"><img src="poster4.jpg" onerror="this.src='https://via.placeholder.com/200x300/222/555?text=Memories'"></div>
+            <div class="poster-card" onclick="showFillerMsg()"><img src="poster5.jpg" onerror="this.src='https://via.placeholder.com/200x300/222/555?text=Future'"></div>
+            <div class="poster-card" onclick="showFillerMsg()"><img src="poster6.jpg" onerror="this.src='https://via.placeholder.com/200x300/222/555?text=Hugs'"></div>
+            <div class="poster-card" onclick="showFillerMsg()"><img src="poster7.jpg" onerror="this.src='https://via.placeholder.com/200x300/222/555?text=Kisses'"></div>
+            <div class="poster-card" onclick="showFillerMsg()"><img src="poster8.jpg" onerror="this.src='https://via.placeholder.com/200x300/222/555?text=Smile'"></div>
+            <div class="poster-card" onclick="showFillerMsg()"><img src="poster9.jpg" onerror="this.src='https://via.placeholder.com/200x300/222/555?text=Yours'"></div>
+            <div class="poster-card" onclick="showFillerMsg()"><img src="poster10.jpg" onerror="this.src='https://via.placeholder.com/200x300/222/555?text=Forever'"></div>
+        </div>
+    </div>
+
+    <!-- SCREEN 3: PROFILE SCREEN -->
+    <div id="profile-screen" class="screen">
+        <div class="modal-header">
+            <div class="back-btn" onclick="closeProfile()">✕</div>
+            <div style="font-weight: bold; margin-left: 10px;">Profiles & More</div>
+        </div>
+
+        <div class="profile-header">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" class="avatar-large">
+            <div class="profile-name">Sehj</div>
+            <div class="profile-meta">sehjbauni@gmail.com</div>
+            <div class="profile-meta" style="letter-spacing: 2px; margin-top: 5px;">********99</div>
+        </div>
+
+        <div class="stats-container">
+            <div class="stat-box">
+                <div class="stat-num">99%</div>
+                <div class="stat-label">Happiness</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num">100%</div>
+                <div class="stat-label">Crazy</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num">10000%</div>
+                <div class="stat-label">Beautiful</div>
+            </div>
+        </div>
+
+        <div class="info-row">
+            <div class="info-label">Plan</div>
+            <div class="info-val" style="color: #e50914;">Premium (Lifetime)</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Member Since</div>
+            <div class="info-val">The day we met</div>
+        </div>
+
+        <div class="special-note">
+            <p style="margin-bottom: 10px; font-weight: bold; color: white;">LIMITED CUSTOM EDITION</p>
+            This Netflix is a limited custom edition built for special people around the world, and Sehj is one of them.
+            <br><br>
+            <span style="color: var(--netflix-red); font-style: italic;">A special gift from Sam.</span>
+        </div>
+    </div>
+
+    <!-- SCREEN 4: SERIES DETAILS -->
+    <div id="series-screen" class="screen">
+        <div class="modal-header">
+            <div class="back-btn" onclick="goBackToHome()">❮</div>
+        </div>
+
+        <div class="series-hero">
+            <div style="display: flex; gap: 15px;">
+                <img src="poster1.jpg" style="width: 120px; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+                <div>
+                    <h1 style="font-size: 24px; font-weight: 800; margin-bottom: 5px;">My Dearest One</h1>
+                    <div style="color: #46d369; font-weight: bold; font-size: 13px;">99% Match</div>
+                    <div style="color: #aaa; font-size: 13px; margin-top: 2px;">2026 • 1 Season • Romance</div>
+                    <p style="font-size: 13px; color: #ccc; margin-top: 8px; line-height: 1.3;">
+                        The true story of how one girl became my entire world. Starring Sehj and Sam.
+                    </p>
+                </div>
+            </div>
+            <div class="play-btn-large" onclick="openEpisode(1)">
+                <span>▶</span> Play Episode 1
+            </div>
+        </div>
+
+        <div style="padding: 0 20px;">
+            <h3 style="margin-bottom: 10px; font-size: 16px;">Episodes</h3>
+        </div>
+        <div id="episodes-list-insert"></div>
+    </div>
+
+    <!-- SCREEN 5: EPISODE PLAYER -->
+    <div id="player-screen" class="screen">
+        <!-- INTRO OVERLAY -->
+        <div id="episode-intro-overlay" style="display: none;">
+            <video id="episode-intro-vid" playsinline>
+                <source src="series_intro.mp4" type="video/mp4">
+            </video>
+            <div class="skip-btn" onclick="skipIntro()">Skip Intro</div>
+        </div>
+
+        <!-- CONTENT -->
+        <div id="episode-real-content">
+            <div class="modal-header">
+                <div class="back-btn" onclick="closePlayer()">❮</div>
+                <div id="player-title" style="font-weight: bold; margin-left: 10px;">Episode Title</div>
+            </div>
+            <div id="episode-content-area"></div>
+        </div>
+        
+        <audio id="bg-music" loop></audio>
+    </div>
+
+    <script>
+        // --- DATA SECTION ---
+        const episodesData = [
+            {
+                id: 1,
+                title: "The Beginning",
+                img: "ep1.jpg",
+                video: "ep1.mp4",
+                music: "song1.mp3",
+                text: "welocome to my world! ye khanai meri he isme jo characters he vo bilkul asli mainly ek khubsurat ladki jo meri is kahani ka main character he. ye us time ki bat he jab me usse janta hi hum ek game me mile the accidentally pta ni destiny me kya likha he us din mene mila senorita ko hum mile the boderlands me me tabhi game try kiya tha dekha shyd accha ho aut vaha mujhe kuch aur hi accha mil gya usne mujhe help kiya game pass krne me mujhe bhut accha lga pta ni uska nature hi esa he pur mujhe usdin tak kisine esa feel ni krvaya ek din me hi psnd ayi aur mene use request send kiya aur ye me zindagi me ek accha kam kiya use request bhejke fir kya vo offline chli gyi mujhe usse khelna he bhale hi mujhe tab feelings ni thi but she was nice that was November 10 jab hum firse mile the usdin hum khele he aur at the end she gave me her Instagram aur yahi se shuru hua he sab the beautiful journey of my love usko request send kiya accept bhi kiya aur hum bat krne lge pta ni inner me bhut kush hota he usse jab bhi bat krta hu i was lost that time pta ni zindagi me kya krna he aur senorita se bhat krte bhut kush hota hu bhut pgl ladki he pta he usko mere upr tab koi feelings ni thi but inner me usse aur psnd krne lga aur madam ne usko nam sneha bola aur firse uska asli name bola SEHJ this is the first time i hear her name bhut sundr name he uski tarah aur until now uska face tak ni dekha mene vo uska fake id diya tha hum kuch din bhat kr rhe the late nights chats feels so worth it ki is insaan ke liye sleep bhi chod du mene usko ye bate ni bola tha ki i was in love with her already btaya toh wierd lgega isliye ni btaya usse bat krne ka mujhe bhut man tha i used to wait so crazy for night so that she come online hum bhut bhate share kiye the at this point she became something loving to me she was so sweet.hum hamre thoughts share kiya aur mera feelings uspe bhad the gyi sehj ko pta ni tha ki me usse bhut pehle se hi pyr kr rhahu i feel for her first i attended to her she was like a angel jis insaan ka face thak ni deka ab thak us insaan se pyr krne lga. clg me bhi uske bare me soch tha tha ki shyd vo txt kre ab me bhut isolative tha clg me koi na gang koi na friends just pure introvert aur usdin rat November 14 she shared her real instagram this is the moment i feel even more mene kabhi usko uska pic ni manga kyuki i dont need her pic to love and the moment usko dekha i feel even more usko btaya ni but 2 ghnate tak usko dekh tha hi rha i was pgl but i feel good but more than love i respect her very much mene usko kabhi lust way me sapno me bhi ni dekha all i saw is with my whole respectfull love she was fairy in real"
+            },
+            {
+                id: 2,
+                title: "silent love",
+                img: "ep2.jpg",
+                video: "ep2.mp4",
+                music: "song2.mp3",
+                text: " din bhr usko hi dekh tha rha aur rat bhr uske pyr me girta rha aur mene usko mere dost ko dikhya ki is ladki ko me pyr krta hu i said about her to my friends way before i was genuinely mera zindagi me pehli bar caring ka experience kiya hu she was more than my mother i am not lying vo bhut care krti thi aur mujhe bhit usko isse bhi zyada care krna tha bhut zyada care she called me hb pgl me husband smja aur mera dil ek min ruk gya ki kya hb kahi isko pyr toh ni he merepe aur bad me smja its home boy me bhi na bhut unpad hu she used to call me hg but i want to call her love i didnt gave any hints or anything so unko pta ho ske i love her . i loved her in silence i adore her in silence aur fir aya ek din the guy came to roblox begging her for a chance i understood the situation and mujhe rona agya i felt something lost my dearest one us time mere ankho pe asu aye the i am not ready to losse her but fir bhi me kon hu usko lejane keliye i was just a guy came in middle but ptachala he choosen someone else over her . usdin usko rote hue dekh khe mujhe bhi rona agya pta ni kya connection he but feels like sehj ko me janta hu bhut saal se sehj is very strong vo sab ladkiyo ki tarah ni thi she never there where she isn't respected she eventually moved on abhi bhi uska hath me ni choda kyuki i even started loved her more hum sath me firse masti krne lge she was happy again usko happy delh khe mujhe bhi bhut kushi hua he bhut zyada and still she didnt know i love her  fir ek din sehj ne mera liked reels dekha pucha ki do i love anyone but usko kya pta i liked for her mene bolna chaha but somewhere dhr tha ki reject keegi then i finally decided to open up usko btaya ki mujhe feelings he but not directly i said i liked reels for ger usne mujhe kutte bola honestly this was first ek ladki mujhe kutte bola and it was cute i accepted that she will reject probably agr kiya fir bhi usko ese hi pyr krunga in silence but it turned into something ek din roblox me she said i want to say something and then nothing usne esa 14 bar bola deep down i feared ki kahi ye mujse contact kr Krna chahti he cause i have feelings of her but the beautiful thing is she too loves me she too have feelings  i was on bed tab mene bed ke upr khada hokr ese hi text ko dekh rha tha in shock ki ye dream toh ni kyuki ye dream se bhi upr he ya madam sehj loves me this gorgeous cute girl loves me too who i adore from very beginning but she was practical as regular agr itni easily sehj mujhe mil gya toh kahani me twist hi kya hoga ab twist religion ke roop me ayi he we were confused but we dont want to give up especially me usdin se hi socha ki no matter what i dont give up on sehj usne bhi kabhi giveup ni kiya we stood strongly esa hi we talked regularly sahred some romantic reels some romantic bhate sehj mera pehli ladki thi jisse me call me bat kiya tha mujhe ab bhi yad hi new year ke din she and me talking outside hamre parents ko bina pta chele and she called me baby yes i became a baby for her usko me ni bola kyuiki pta ni but usko us time hug krne ka man kiya but usse jab bhi bat krta hu time ka pta hi ni chelta he uska voice hi mera therapy he sehj ek miracle he mere life me bagwan sab ki life me pehla galat insaan lata he so that we mature and make right decisions in life aur fir ek insaan ko lata he aur mere life me sehj is the one im giving everything i was one man women kabhi ladki ka bhooka ni tha i dont even want any girls attention but she i was sehjs attention so bad usse me 2 bacche bhi imagine kiya he shej was everything i wanted in life kehte hena ki agr pyr saccha ho tho distance matter ni krta aur in my case ita real usko me itna pyr krta hu ki vo mujhe 10 saal me bhi utna pyr ni kr pyega i worshipped her for miles away without even touching her everything was colourfull and beautiful with her even i started falling in love with my name when her name is beside. pta ni is generation me ye kya kehte he love bombing? something but i was old type guy i say this loving the soul at the end ek hi bat man me ata he I LOVE SEHJ "
+            },
+            {
+                id: 3,
+                title: "Why You?",
+                img: "ep3.jpg",
+                video: "ep3.mp4",
+                music: "song3.mp3",
+                text: "People ask what I see in you. I see kindness, I see beauty, but mostly I see my home. Here are the little things I love about you..."
+            },
+            {
+                id: 4,
+                title: "Favorite Memory",
+                img: "ep4.jpg",
+                video: "ep4.mp4",
+                music: "song4.mp3",
+                text: "Of all the times we spent together, this one stands out. I replay it in my head like a movie..."
+            },
+            {
+                id: 5,
+                title: "Hard Times",
+                img: "ep5.jpg",
+                video: "ep5.mp4",
+                music: "", 
+                text: "We've had our ups and downs. But getting through them only made us stronger. Thank you for not giving up on us."
+            },
+            {
+                id: 6,
+                title: "My Promise",
+                img: "ep6.jpg",
+                video: "ep6.mp4",
+                music: "song6.mp3",
+                text: "Today, on Valentine's Day, I want to make a promise to you. No matter what happens, I will always be by your side."
+            },
+            {
+                id: 7,
+                title: "To My Valentine",
+                img: "ep7.jpg",
+                video: "ep7.mp4",
+                music: "song7.mp3",
+                text: "Happy Valentine's Day, Sehj. You are the reason I smile at my phone like an idiot. I love you more than words can say."
+            },
+            {
+                id: 8,
+                title: "Forever",
+                img: "ep8.jpg",
+                video: "ep8.mp4",
+                music: "song8.mp3",
+                text: "This isn't the season finale. It's just the beginning of the rest of our lives. I love you."
+            }
+        ];
+
+        // --- APP LOGIC ---
+
+        // 1. App Launch Intro with FAIL-SAFE
+        function startExperience() {
+            const tapText = document.getElementById('tap-to-start');
+            const video = document.getElementById('intro-video');
+            const loadingMsg = document.getElementById('loading-msg');
+            
+            // Show loading initially
+            loadingMsg.style.display = 'block';
+
+            // Attempt to play
+            var playPromise = video.play();
+
+            if (playPromise !== undefined) {
+                playPromise.then(_ => {
+                    // Video started!
+                    loadingMsg.style.display = 'none';
+                    tapText.style.display = 'none';
+                    video.style.display = 'block';
+                })
+                .catch(error => {
+                    // Video Failed (File missing or format issue)
+                    console.log("Intro failed, skipping: " + error);
+                    forceSkipToHome();
+                });
+            } else {
+                // Browser doesn't support promise, try basic
+                video.style.display = 'block';
+            }
+
+            // Normal End Event
+            video.onended = () => {
+                forceSkipToHome();
+            };
+        }
+
+        function forceSkipToHome() {
+            document.getElementById('intro-layer').style.display = 'none';
+            document.getElementById('home-screen').classList.add('active');
+        }
+
+        // Hero Slideshow
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.hero-slide');
+        setInterval(() => {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (currentSlide + 1) % slides.length;
+            slides[currentSlide].classList.add('active');
+        }, 3500);
+
+        // Toast Notification
+        function showFillerMsg() {
+            var x = document.getElementById("toast");
+            x.className = "show";
+            setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
+        }
+
+        // Profile Logic
+        function openProfile() { document.getElementById('profile-screen').classList.add('slide-in'); }
+        function closeProfile() { document.getElementById('profile-screen').classList.remove('slide-in'); }
+
+        // Series List Logic
+        function openSeriesDetails() {
+            const listContainer = document.getElementById('episodes-list-insert');
+            listContainer.innerHTML = ''; 
+            
+            episodesData.forEach(ep => {
+                listContainer.innerHTML += `
+                    <div class="episode-row" onclick="openEpisode(${ep.id})">
+                        <div class="ep-thumb">
+                            <img src="${ep.img}" onerror="this.src='https://via.placeholder.com/150x100/333/888?text=EP${ep.id}'">
+                        </div>
+                        <div style="flex: 1;">
+                            <h4 style="font-size: 14px; margin-bottom: 3px;">${ep.id}. ${ep.title}</h4>
+                            <span style="font-size: 12px; color: #888;">24m</span>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('home-screen').style.display = 'none';
+            const seriesScreen = document.getElementById('series-screen');
+            seriesScreen.style.display = 'block';
+            seriesScreen.classList.add('slide-in');
+        }
+
+        function goBackToHome() {
+            document.getElementById('series-screen').classList.remove('slide-in');
+            document.getElementById('series-screen').style.display = 'none';
+            document.getElementById('home-screen').style.display = 'block';
+        }
+
+        // --- EPISODE PLAYER & INTRO LOGIC ---
+        let isMusicPlaying = false;
+
+        function openEpisode(id) {
+            const ep = episodesData.find(e => e.id === id);
+            
+            document.getElementById('player-title').innerText = ep.title;
+            const contentArea = document.getElementById('episode-content-area');
+            
+            // Music Button
+            let musicHTML = '';
+            if (ep.music && ep.music.length > 0) {
+                musicHTML = `
+                    <div style="background:#222; padding:10px; border-radius:8px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+                        <div style="font-size:12px; color:#aaa;">🎵 Play Song</div>
+                        <button onclick="toggleMusic('${ep.music}', this)" style="background:#E50914; color:white; border:none; padding:5px 15px; border-radius:15px; font-weight:bold;">PLAY</button>
+                    </div>
+                `;
+            }
+
+            // Rating
+            let ratingHTML = '<div class="rating-grid">';
+            for(let i=1; i<=5; i++) ratingHTML += `<button class="rate-btn" onclick="rate(${i})">${i}</button>`;
+            ratingHTML += '</div><div class="rating-grid">';
+            for(let i=6; i<=10; i++) ratingHTML += `<button class="rate-btn" onclick="rate(${i})">${i}</button>`;
+            ratingHTML += '</div>';
+
+            contentArea.innerHTML = `
+                <div class="ep-media-placeholder">
+                    <video controls playsinline poster="${ep.img}" style="max-height: 300px;">
+                        <source src="${ep.video}" type="video/mp4">
+                    </video>
+                </div>
+                ${musicHTML}
+                <div class="love-letter">${ep.text}</div>
+                <div class="rating-section">
+                    <div class="rating-title" id="rating-label">RATE THIS MEMORY (SCALE OF 10)</div>
+                    ${ratingHTML}
+                </div>
+                <div style="height:50px;"></div>
+            `;
+
+            document.getElementById('series-screen').style.display = 'none';
+            const playerScreen = document.getElementById('player-screen');
+            playerScreen.style.display = 'block';
+            playerScreen.classList.add('slide-in');
+            
+            // PLAY INTRO
+            const introOverlay = document.getElementById('episode-intro-overlay');
+            const introVid = document.getElementById('episode-intro-vid');
+            const realContent = document.getElementById('episode-content-area');
+            
+            realContent.style.display = 'none';
+            introOverlay.style.display = 'flex';
+            introVid.currentTime = 0;
+            
+            // Try to play intro, if missing/error, skip immediately
+            introVid.play().catch(e => {
+                console.log("Intro video missing/error, skipping.");
+                skipIntro();
+            });
+
+            introVid.onended = function() {
+                skipIntro();
+            };
+        }
+
+        function skipIntro() {
+            const introOverlay = document.getElementById('episode-intro-overlay');
+            const introVid = document.getElementById('episode-intro-vid');
+            const realContent = document.getElementById('episode-content-area');
+            
+            introVid.pause();
+            introOverlay.style.display = 'none';
+            realContent.style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+
+        function toggleMusic(songFile, btn) {
+            const audio = document.getElementById('bg-music');
+            if (isMusicPlaying) {
+                audio.pause();
+                isMusicPlaying = false;
+                btn.innerText = "PLAY";
+                btn.style.background = "#E50914";
+            } else {
+                audio.src = songFile;
+                audio.play();
+                isMusicPlaying = true;
+                btn.innerText = "PAUSE";
+                btn.style.background = "#333";
+            }
+        }
+
+        function rate(score) {
+            const label = document.getElementById('rating-label');
+            label.innerText = `YOU RATED: ${score}/10 (SAM LOVES YOU!)`;
+            label.style.color = "#E50914";
+            label.style.fontWeight = "bold";
+            alert(`You rated this memory ${score}/10! \nSam has noted this down ❤️`);
+        }
+
+        function closePlayer() {
+            const audio = document.getElementById('bg-music');
+            audio.pause();
+            isMusicPlaying = false;
+            
+            document.getElementById('episode-intro-vid').pause();
+            
+            document.getElementById('player-screen').classList.remove('slide-in');
+            document.getElementById('player-screen').style.display = 'none';
+            document.getElementById('series-screen').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
